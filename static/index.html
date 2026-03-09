@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBIT Student Assistant</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-background">
+        <!-- Decorative glowing orbs -->
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <main class="chat-container">
+        <header class="chat-header">
+            <div class="header-info">
+                <div class="avatar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="robot-icon"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                </div>
+                <div>
+                    <h1>DBIT Assistant</h1>
+                    <p class="status">Online | Multilingual Support</p>
+                </div>
+            </div>
+            <div class="theme-toggle" id="theme-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </div>
+        </header>
+
+        <div class="chat-messages" id="chat-messages">
+            <!-- Initial welcome message -->
+            <div class="message assistant-message animate-entry">
+                <div class="message-content">
+                    <p>Hello! I am the DBIT Student Assistant. You can ask me questions about campus, notices, or schedules in English, Hindi, or Kannada.</p>
+                </div>
+            </div>
+        </div>
+
+        <form class="chat-input-area" id="chat-form">
+            <input type="text" id="user-input" placeholder="Type your query here..." autocomplete="off" required>
+            <button type="submit" id="send-button" aria-label="Send message">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+        </form>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

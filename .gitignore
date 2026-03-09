@@ -1,0 +1,36 @@
+# Local environment variables containing API keys (CRITICAL to ignore!)
+.env
+
+# ChromaDB vector store directories (generated locally, can be large, do not push)
+chroma_db/
+
+# Python compiled bytecode cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary debugging/test scripts created in this session
+test_embed.py
+test_pdf.py
+
+# Virtual environment folders (if you create one)
+venv/
+env/
+.venv/
+.env/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary/Cache files
+/tmp
+/logs
