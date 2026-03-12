@@ -8,11 +8,6 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from pymupdf4llm import to_markdown
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain_community.vectorstores import Chroma
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
-from langchain.schema import Document
 try:
     from pdf2image import convert_from_path
     import pytesseract
