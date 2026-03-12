@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyPDFLoader
+from pymupdf4llm import to_markdown
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Chroma
@@ -29,63 +29,117 @@ def initialize_bot():
 
     # 3. Reuse existing ChromaDB if already built, otherwise build from PDF
     chroma_db_path = "./chroma_db"
+    docs_dir = "./documents"
+    
+    # Check if documents directory exists
+    if not os.path.exists(docs_dir):
+        os.makedirs(docs_dir)
+        print(f"Created '{docs_dir}' directory. Please place your PDFs there.")
+        return None
+        
     if os.path.exists(chroma_db_path) and os.listdir(chroma_db_path):
         print("Loading existing vector database...")
         vector_store = Chroma(persist_directory=chroma_db_path, embedding_function=embeddings)
     else:
-        # 1. Load the requested PDF context
-        try:
-            loader = PyPDFLoader("AES.pdf")
-            data = loader.load()
-        except Exception as e:
-            print(f"Error loading AES.pdf: {e}")
-            print("Please ensure AES.pdf exists in the directory.")
+        # 1. Load all PDFs in the documents directory
+        pdf_files = [f for f in os.listdir(docs_dir) if f.lower().endswith(".pdf")]
+        
+        if not pdf_files:
+            print(f"No PDFs found in the '{docs_dir}' directory.")
+            return None
+            
+        all_docs = []
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)
+        
+        for pdf_file in pdf_files:
+            pdf_path = os.path.join(docs_dir, pdf_file)
+            print(f"Processing: {pdf_file}...")
+            
+            try:
+                # Use PyMuPDF4LLM to extract text as Markdown (preserves tables)
+                md_text = to_markdown(pdf_path)
+                
+                # PREPEND the source name to the text itself so the LLM physically reads it
+                content_with_source = f"DOCUMENT SOURCE: {pdf_file}\n\n{md_text}"
+                
+                # Wrap it in a single Langchain Document
+                doc = Document(page_content=content_with_source, metadata={"source": pdf_file})
+                
+                # Split the text into manageable pieces
+                docs = text_splitter.split_documents([doc])
+                
+                # Filter out empty documents
+                docs = [doc for doc in docs if doc.page_content.strip()]
+                
+                if docs:
+                    all_docs.extend(docs)
+                    print(f"  Successfully extracted {len(docs)} chunks from {pdf_file}")
+                else:
+                    print(f"  Warning: Standard extraction failed for {pdf_file}. Trying OCR instead...")
+                    if OCR_AVAILABLE:
+                        try:
+                            images = convert_from_path(pdf_path)
+                            ocr_text = ""
+                            for i, image in enumerate(images):
+                                ocr_text += f"\n--- Page {i+1} ---\n"
+                                ocr_text += pytesseract.image_to_string(image)
+                            
+                            if ocr_text.strip():
+                                # Create a single LangChain Document from the OCR text
+                                doc = Document(page_content=ocr_text, metadata={"source": pdf_file})
+                                ocr_docs = text_splitter.split_documents([doc])
+                                all_docs.extend(ocr_docs)
+                                print(f"  Successfully extracted {len(ocr_text)} characters from {pdf_file} using OCR.")
+                            else:
+                                print(f"  ERROR: OCR failed to extract text from {pdf_file}.")
+                        except Exception as e:
+                            print(f"  OCR failed for {pdf_file}: {e}")
+                    else:
+                        print(f"  ERROR: Could not extract text from {pdf_file} and OCR is not available.")
+                        
+            except Exception as e:
+                print(f"  Error loading {pdf_file}: {e}")
+        
+        if not all_docs:
+            print("ERROR: No text could be extracted from any of the provided PDFs.")
             return None
 
-        # 2. Split the text into manageable pieces
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        docs = text_splitter.split_documents(data)
-
-        # Filter out empty documents
-        docs = [doc for doc in docs if doc.page_content.strip()]
-
-        if not docs:
-            print("Warning: Standard extraction failed. Trying OCR instead...")
-            if OCR_AVAILABLE:
-                try:
-                    images = convert_from_path("AES.pdf")
-                    ocr_text = ""
-                    for i, image in enumerate(images):
-                        ocr_text += f"\n--- Page {i+1} ---\n"
-                        ocr_text += pytesseract.image_to_string(image)
-                    
-                    if ocr_text.strip():
-                        # Create a single LangChain Document from the OCR text
-                        doc = Document(page_content=ocr_text, metadata={"source": "AES.pdf tice(OCR)"})
-                        docs = text_splitter.split_documents([doc])
-                        print(f"Successfully extracted {len(ocr_text)} characters using OCR.")
-                except Exception as e:
-                    print(f"OCR failed: {e}")
-            
-            if not docs:
-                print("ERROR: No text could be extracted from AES.pdf.")
-                print("Your PDF is either empty, scanned with unreadable text, or OCR failed.")
-                return None
-
-        print(f"Building vector database from {len(docs)} document chunks...")
-        vector_store = Chroma.from_documents(docs, embeddings, persist_directory=chroma_db_path)
+        print(f"Building vector database from {len(all_docs)} total document chunks...")
+        vector_store = Chroma.from_documents(all_docs, embeddings, persist_directory=chroma_db_path)
     
     # 4. Setup the Multilingual Chat Brain with Context Management
     llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", google_api_key=google_api_key)
     
-    template = """Answer this according to the pdf given only'.
+    template = """You are a highly precise college assistant. Your job is to answer questions using ONLY the provided documents.
+    
+CRITICAL MULTI-DOCUMENT RULES:
+1. You may receive chunks of text from multiple different PDFs. Look at the "DOCUMENT SOURCE:" written at the top of the text chunks.
+2. If the user asks a broad question, ALWAYS separate your answer clearly based on the documents. Example: "According to the Class Timetable... According to the VTU Exam Timetable..."
+
+CRITICAL FORMATTING INSTRUCTIONS - YOU MUST OBEY THIS:
+1. If the user asks ANY question about a timetable, schedule, or list of classes/exams, YOU MUST OUTPUT A MARKDOWN TABLE. 
+2. DO NOT use bullet points. DO NOT use plain text lists. ONLY use a Markdown table.
+3. Example table format:
+| Time | Subject |
+| :--- | :--- |
+| 9:00-10:00 AM | ML Class |
+4. DO NOT include a "Document Source" column in the table itself. If you need to cite the source, mention it in the introductory text before the table.
+
+CRITICAL INSTRUCTIONS FOR TIMETABLES & BREAKS: 
+Timetables in the context are often flattened text. When answering about a specific day:
+1. First, find the row starting with the Day (e.g., "MON", "TUE", "WED", "THU", "FRI", "SAT").
+2. The subjects listed after the day correspond sequentially to the time slots (e.g., 9:00-10:00, 10:00-11:00, 11:15-12:15, 12:15-1:15, 2:00-2:55).
+3. YOU MUST ALWAYS inject the following breaks into the daily schedule table, in their chronological order:
+   - | 11:00-11:15 AM | Tea Break |
+   - | 1:15-2:00 PM | Lunch Break |
+4. If reading an Exam Date table, match the Subject Code explicitly to the Date listed.
 
 Context:
 {context}
 
 Question: {question}
 
-Assistant:"""
+Assistant (Remember to output a Markdown Table if applicable!):"""
 
     QA_PROMPT = PromptTemplate(
         template=template, input_variables=["context", "question"]

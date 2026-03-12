@@ -1,27 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
     const form = document.getElementById('chat-form');
     const userInput = document.getElementById('user-input');
     const messagesContainer = document.getElementById('chat-messages');
-
-    // Theme setup
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (prefersDark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
     
-    themeToggle.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        
-        // Update icon based on theme
-        const svg = themeToggle.querySelector('svg');
-        if (newTheme === 'dark') {
-            svg.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
-        } else {
-            svg.innerHTML = '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
-        }
+    // View Toggles
+    const landingView = document.getElementById('landing-view');
+    const chatView = document.getElementById('chat-view');
+    const getStartedBtn = document.getElementById('get-started-btn');
+    const backBtn = document.getElementById('back-to-home');
+
+    getStartedBtn.addEventListener('click', () => {
+        landingView.classList.remove('active-view');
+        landingView.classList.add('hidden-view');
+        chatView.classList.remove('hidden-view');
+        chatView.classList.add('active-view');
+        setTimeout(() => userInput.focus(), 100);
+    });
+
+    backBtn.addEventListener('click', () => {
+        chatView.classList.remove('active-view');
+        chatView.classList.add('hidden-view');
+        landingView.classList.remove('hidden-view');
+        landingView.classList.add('active-view');
     });
 
     const createMessageElement = (content, sender, isHtml = false) => {
@@ -100,7 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await response.json();
             
-            const assistantMsg = createMessageElement(data.answer, 'assistant');
+            // Parse Markdown from the AI
+            const parsedHTML = marked.parse(data.answer);
+            const assistantMsg = createMessageElement(parsedHTML, 'assistant', true);
             messagesContainer.appendChild(assistantMsg);
             
         } catch (error) {
