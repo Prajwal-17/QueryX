@@ -10,7 +10,7 @@ except Exception as e:
     print(e)
     
 try:
-    llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview")
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
     print("llm ok")
 except Exception as e:
     print(e)
